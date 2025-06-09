@@ -16,8 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"; // Card components not used directly here as layout provides a card-like shell.
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, Loader2 } from 'lucide-react';
+import { useState } from "react";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -29,6 +29,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -38,22 +39,20 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    // Mock login: In a real app, you'd call an API.
-    // For this demo, any valid email/password will work.
-    // We'll use the email as a mock user ID and name.
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsSubmitting(true);
     try {
-      login({ id: data.email, email: data.email, name: data.email.split('@')[0] });
+      await login(data.email, data.password);
+      // Navigation is handled by AuthContext after successful Firebase login
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
     } catch (error) {
-      toast({
-        title: "Login Failed",
-        description: (error as Error).message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      // Error toast is handled by AuthContext, but form can reset or show specific messages if needed
+      // For now, AuthContext handles the user-facing error message.
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -76,7 +75,7 @@ export default function LoginPage() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <FormControl>
-                    <Input type="email" placeholder="name@example.com" {...field} className="pl-10" />
+                    <Input type="email" placeholder="name@example.com" {...field} className="pl-10" disabled={isSubmitting} />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -92,14 +91,15 @@ export default function LoginPage() {
                  <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} className="pl-10" />
+                    <Input type="password" placeholder="••••••••" {...field} className="pl-10" disabled={isSubmitting} />
                   </FormControl>
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Login
           </Button>
         </form>

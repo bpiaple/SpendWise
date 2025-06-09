@@ -1,15 +1,24 @@
 
 "use client";
-import type { User } from '@/lib/types';
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import useLocalStorage from '@/hooks/use-local-storage';
+import type { User as AppUser } from '@/lib/types'; // Renamed to avoid conflict with Firebase User
+import React, { createContext, useContext, useEffect, ReactNode, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase/config';
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  updateProfile,
+  type User as FirebaseUser // Firebase's User type
+} from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
-  user: User | null;
-  login: (userData: User) => void;
-  logout: () => void;
-  signup: (userData: User) => void; // Simplified signup
+  user: AppUser | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -17,39 +26,88 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useLocalStorage<User | null>('spendwise-user', null);
-  const [isLoading, setIsLoading] = React.useState(true); 
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true); 
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // On initial client-side mount, we can consider loading complete.
-    // useLocalStorage hook handles initializing 'user' from localStorage.
-    setIsLoading(false);
-  }, []); // Empty dependency array ensures this runs once on mount client-side.
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
 
-  const login = (userData: User) => {
-    setUser(userData);
-    router.push('/dashboard');
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // User state will be set by onAuthStateChanged
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Could not sign in. Please check your credentials.",
+        variant: "destructive",
+      });
+      setIsLoading(false); // Ensure loading is stopped on error
+      throw error; // Re-throw to allow form to handle its state
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    // For user-specific data, rely on useLocalStorage key changes
-    // e.g., 'spendwise-transactions-userId' will effectively clear/reload data.
-    // If there's truly global data that needs clearing on logout and isn't keyed by user,
-    // that would need specific handling here or in AppDataProvider.
-    // For now, changing the user specific keys in AppDataContext via user.id changing is the primary mechanism.
-    router.push('/login');
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await firebaseSignOut(auth);
+      // User state will be set to null by onAuthStateChanged
+      router.push('/login');
+    } catch (error: any) {
+      console.error("Logout error:", error);
+       toast({
+        title: "Logout Failed",
+        description: error.message || "An unexpected error occurred during logout.",
+        variant: "destructive",
+      });
+    } finally {
+        // setUser(null) is handled by onAuthStateChanged
+        setIsLoading(false);
+    }
   };
 
-  const signup = (userData: User) => {
-    const newUser = { ...userData, id: userData.email }; 
-    setUser(newUser);
-    router.push('/dashboard');
+  const signup = async (name: string, email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: name });
+      // User state will be set by onAuthStateChanged, reflecting the new profile
+      // It might take a moment for onAuthStateChanged to pick up displayName, force refresh if needed or update local state.
+      // For simplicity here, onAuthStateChanged will handle it.
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Signup Failed",
+        description: error.message || "Could not create account. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false); // Ensure loading is stopped on error
+      throw error; // Re-throw to allow form to handle its state
+    }
   };
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !isLoading; // Ensure not loading when checking auth
 
   return (
     <AuthContext.Provider value={{ user, login, logout, signup, isAuthenticated, isLoading }}>

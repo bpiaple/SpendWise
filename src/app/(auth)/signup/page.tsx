@@ -16,7 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Lock } from 'lucide-react';
+import { User, Mail, Lock, Loader2 } from 'lucide-react';
+import { useState } from "react";
 
 
 const signupSchema = z.object({
@@ -30,6 +31,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const { signup } = useAuth();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -40,20 +42,19 @@ export default function SignupPage() {
     },
   });
 
-  const onSubmit = (data: SignupFormValues) => {
-    // Mock signup
+  const onSubmit = async (data: SignupFormValues) => {
+    setIsSubmitting(true);
     try {
-      signup({ id: data.email, email: data.email, name: data.name }); // Using email as ID for mock
+      await signup(data.name, data.email, data.password);
+      // Navigation is handled by AuthContext after successful Firebase signup
       toast({
         title: "Signup Successful",
         description: "Welcome to SpendWise!",
       });
     } catch (error) {
-       toast({
-        title: "Signup Failed",
-        description: (error as Error).message || "An unexpected error occurred.",
-        variant: "destructive",
-      });
+      // Error toast is handled by AuthContext
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -76,7 +77,7 @@ export default function SignupPage() {
                  <div className="relative">
                   <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <FormControl>
-                    <Input placeholder="John Doe" {...field} className="pl-10" />
+                    <Input placeholder="John Doe" {...field} className="pl-10" disabled={isSubmitting} />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -92,7 +93,7 @@ export default function SignupPage() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <FormControl>
-                    <Input type="email" placeholder="name@example.com" {...field} className="pl-10" />
+                    <Input type="email" placeholder="name@example.com" {...field} className="pl-10" disabled={isSubmitting} />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -108,14 +109,15 @@ export default function SignupPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} className="pl-10" />
+                    <Input type="password" placeholder="••••••••" {...field} className="pl-10" disabled={isSubmitting} />
                   </FormControl>
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Account
           </Button>
         </form>
@@ -129,4 +131,3 @@ export default function SignupPage() {
     </>
   );
 }
-

@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 
 type SetValue<T> = (value: T | ((val: T) => T)) => void;
 
+// WARNING: This hook is not currently used for user authentication data after Firebase integration.
+// Firebase handles its own session persistence.
+// This hook is still used for application data like transactions and budgets.
+
 function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
     if (typeof window === 'undefined') {
@@ -31,9 +35,6 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
   };
 
   useEffect(() => {
-    // This effect is responsible for updating the React state (storedValue)
-    // if the 'key' or 'initialValue' props change, or if localStorage
-    // was empty for the key and needs to be initialized.
     if (typeof window === 'undefined') {
       return;
     }
@@ -41,29 +42,25 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
     try {
       const item = window.localStorage.getItem(key);
       if (item) {
-        // Item exists in localStorage. Ensure our React state matches.
         const parsedItem = JSON.parse(item);
         if (JSON.stringify(storedValue) !== JSON.stringify(parsedItem)) {
           setStoredValue(parsedItem);
         }
       } else {
         // Item does NOT exist in localStorage for this key.
-        // 1. The React state should be `initialValue`.
-        // 2. localStorage should be set to `initialValue`.
+        // Ensure React state reflects initialValue and initialize localStorage.
         if (JSON.stringify(storedValue) !== JSON.stringify(initialValue)) {
-          setStoredValue(initialValue);
+           setStoredValue(initialValue);
         }
-        // Always ensure localStorage is initialized if it was missing for this key.
         window.localStorage.setItem(key, JSON.stringify(initialValue));
       }
     } catch (error) {
       console.error(`Error synchronizing localStorage key "${key}":`, error);
+      // If error occurs, reset to initialValue to prevent app crash with corrupted data
+      setStoredValue(initialValue); 
     }
-    // This effect should ONLY re-run if the key or initialValue itself changes.
-    // Do NOT add storedValue to this dependency array, as that would cause a loop
-    // because this effect can call setStoredValue.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, initialValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, initialValue]); // Only re-run if key or initialValue definition changes
 
 
   return [storedValue, setValue];
