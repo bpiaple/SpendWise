@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 type SetValue<T> = (value: T | ((val: T) => T)) => void;
@@ -30,26 +31,39 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
   };
 
   useEffect(() => {
-    // This effect ensures that the state is updated on the client-side
-    // after initial hydration if the localStorage value differs from initialValue.
-    if (typeof window !== 'undefined') {
-        try {
-            const item = window.localStorage.getItem(key);
-            if (item) {
-                const parsedItem = JSON.parse(item);
-                if (JSON.stringify(storedValue) !== JSON.stringify(parsedItem)) {
-                    setStoredValue(parsedItem);
-                }
-            } else if (JSON.stringify(storedValue) !== JSON.stringify(initialValue) && !item) {
-                 window.localStorage.setItem(key, JSON.stringify(initialValue));
-                 setStoredValue(initialValue);
-            }
-        } catch (error) {
-            console.error(`Error synchronizing localStorage key "${key}":`, error);
-        }
+    // This effect is responsible for updating the React state (storedValue)
+    // if the 'key' or 'initialValue' props change, or if localStorage
+    // was empty for the key and needs to be initialized.
+    if (typeof window === 'undefined') {
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, initialValue]); // Add storedValue to dependency array if you want re-sync on its change, but it might cause loops. Initial setup should be fine with just key, initialValue.
+
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        // Item exists in localStorage. Ensure our React state matches.
+        const parsedItem = JSON.parse(item);
+        if (JSON.stringify(storedValue) !== JSON.stringify(parsedItem)) {
+          setStoredValue(parsedItem);
+        }
+      } else {
+        // Item does NOT exist in localStorage for this key.
+        // 1. The React state should be `initialValue`.
+        // 2. localStorage should be set to `initialValue`.
+        if (JSON.stringify(storedValue) !== JSON.stringify(initialValue)) {
+          setStoredValue(initialValue);
+        }
+        // Always ensure localStorage is initialized if it was missing for this key.
+        window.localStorage.setItem(key, JSON.stringify(initialValue));
+      }
+    } catch (error) {
+      console.error(`Error synchronizing localStorage key "${key}":`, error);
+    }
+    // This effect should ONLY re-run if the key or initialValue itself changes.
+    // Do NOT add storedValue to this dependency array, as that would cause a loop
+    // because this effect can call setStoredValue.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, initialValue]);
 
 
   return [storedValue, setValue];

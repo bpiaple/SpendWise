@@ -11,25 +11,21 @@ interface AuthContextType {
   logout: () => void;
   signup: (userData: User) => void; // Simplified signup
   isAuthenticated: boolean;
-  isLoading: boolean; 
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useLocalStorage<User | null>('spendwise-user', null);
-  const [isLoading, setIsLoading] = React.useState(true); // Used to prevent flash of unauth content
+  const [isLoading, setIsLoading] = React.useState(true); 
   const router = useRouter();
 
   useEffect(() => {
-    // On initial load, check if user exists in localStorage
-    // This helps to set isLoading correctly
-    const storedUser = window.localStorage.getItem('spendwise-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // On initial client-side mount, we can consider loading complete.
+    // useLocalStorage hook handles initializing 'user' from localStorage.
     setIsLoading(false);
-  }, [setUser]);
+  }, []); // Empty dependency array ensures this runs once on mount client-side.
 
 
   const login = (userData: User) => {
@@ -39,17 +35,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
-    // Optionally clear other app data related to the user from localStorage here
-    window.localStorage.removeItem('spendwise-transactions');
-    window.localStorage.removeItem('spendwise-budgets');
+    // For user-specific data, rely on useLocalStorage key changes
+    // e.g., 'spendwise-transactions-userId' will effectively clear/reload data.
+    // If there's truly global data that needs clearing on logout and isn't keyed by user,
+    // that would need specific handling here or in AppDataProvider.
+    // For now, changing the user specific keys in AppDataContext via user.id changing is the primary mechanism.
     router.push('/login');
   };
 
   const signup = (userData: User) => {
-    // In a real app, this would involve an API call.
-    // For now, we'll just log the user in directly.
-    // Assuming email is unique for simplicity.
-    const newUser = { ...userData, id: userData.email }; // Use email as ID for mock
+    const newUser = { ...userData, id: userData.email }; 
     setUser(newUser);
     router.push('/dashboard');
   };
