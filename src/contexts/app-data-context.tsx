@@ -6,6 +6,10 @@ import useLocalStorage from '@/hooks/use-local-storage';
 import { DEFAULT_CATEGORIES } from '@/lib/constants';
 import { useAuth } from './auth-context';
 
+// Define stable initial values for empty arrays
+const INITIAL_TRANSACTIONS: Transaction[] = [];
+const INITIAL_BUDGETS: Budget[] = [];
+
 interface AppDataContextType {
   transactions: Transaction[];
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
@@ -26,25 +30,17 @@ const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(`spendwise-transactions-${user?.id || 'guest'}`, []);
+
+  // Construct keys that change when user.id changes
+  const transactionsKey = `spendwise-transactions-${user?.id || 'guest'}`;
+  const budgetsKey = `spendwise-budgets-${user?.id || 'guest'}`;
+
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>(transactionsKey, INITIAL_TRANSACTIONS);
   const [categories, setCategories] = useLocalStorage<Category[]>('spendwise-categories', DEFAULT_CATEGORIES);
-  const [budgets, setBudgets] = useLocalStorage<Budget[]>(`spendwise-budgets-${user?.id || 'guest'}`, []);
+  const [budgets, setBudgets] = useLocalStorage<Budget[]>(budgetsKey, INITIAL_BUDGETS);
 
-  // Effect to re-key localStorage when user changes
-  useEffect(() => {
-    if (user) {
-      const userTransactions = localStorage.getItem(`spendwise-transactions-${user.id}`);
-      setTransactions(userTransactions ? JSON.parse(userTransactions) : []);
-      const userBudgets = localStorage.getItem(`spendwise-budgets-${user.id}`);
-      setBudgets(userBudgets ? JSON.parse(userBudgets) : []);
-    } else {
-      // Clear data or set to guest data if user logs out
-      setTransactions([]);
-      setBudgets([]);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
+  // The useEffect hook that was here to manually re-key localStorage when user changes has been removed.
+  // useLocalStorage will now handle this automatically because its 'key' prop changes.
 
   const addTransaction = (transactionData: Omit<Transaction, 'id' | 'userId'>): Transaction => {
     if (!user) throw new Error("User not authenticated");
@@ -88,16 +84,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const getHistoricalSpendingPatterns = (): string => {
     if (!user) return "User not authenticated.";
-    if (transactions.length === 0) {
+    // Ensure transactions are filtered for the current user, although useLocalStorage keying should handle this.
+    const userTransactions = transactions.filter(t => t.userId === user.id);
+    if (userTransactions.length === 0) {
       return "No historical spending data available.";
     }
     const categorySpending: Record<string, number> = {};
-    transactions
-      .filter(t => t.userId === user.id && t.type === 'expense' && t.categoryId)
+    userTransactions
+      .filter(t => t.type === 'expense' && t.categoryId)
       .forEach(t => {
         const category = categories.find(c => c.id === t.categoryId);
         if (category) {
-          categorySpending[category.name] = (categorySpending[category.name] || 0) + t.amount;
+          categorySpending[category.name] = (categorySpending[category.name] || 0) + Math.abs(t.amount); // Ensure positive amount for spending
         }
       });
     if (Object.keys(categorySpending).length === 0) {
@@ -128,4 +126,3 @@ export const useAppData = () => {
   }
   return context;
 };
-
