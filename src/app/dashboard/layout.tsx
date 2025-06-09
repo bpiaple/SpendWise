@@ -2,7 +2,7 @@
 "use client";
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import React, { useEffect }_ from 'react';
+import React, { useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { Briefcase } from 'lucide-react';
 import { APP_NAME } from '@/lib/constants';
@@ -42,3 +42,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+

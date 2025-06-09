@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import type { Transaction } from "@/lib/types";
 import { categorizeTransaction, type CategorizeTransactionInput } from "@/ai/flows/categorize-transaction";
 import AiCategorizationDialog from "./AiCategorizationDialog";
-import React, { useState }_ from "react";
+import React, { useState } from "react";
 
 const transactionFormSchema = z.object({
   description: z.string().min(1, { message: "Description is required." }),
@@ -312,4 +312,3 @@ export default function AddTransactionDialog({ isOpen, onOpenChange, transaction
     </>
   );
 }
-
