@@ -11,6 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { PlusCircle, Edit3, Trash2, Target } from 'lucide-react';
 import type { Budget } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -163,10 +171,13 @@ export default function BudgetOverview() {
                 name="categoryId"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel className="sr-only">Category</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingBudget}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
                         {expenseCategories.map(category => (
                           <SelectItem key={category.id} value={category.id}>
@@ -184,7 +195,10 @@ export default function BudgetOverview() {
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <Input type="number" placeholder="Budget amount" {...field} step="0.01" />
+                    <FormLabel className="sr-only">Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Budget amount" {...field} step="0.01" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
