@@ -28,12 +28,21 @@ export default function DashboardPage() {
 
   const summaryStats = useMemo(() => {
     if (!clientLoaded) return { totalIncome: 0, totalExpenses: 0, netBalance: 0 };
-    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+    const totalIncome = transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpensesDisplay = transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0); // Sum of absolute values for display
+
+    const netBalance = transactions.reduce((sum, t) => sum + t.amount, 0); // Sum all amounts (income positive, expense negative)
+
     return {
-      totalIncome: income,
-      totalExpenses: expenses,
-      netBalance: income - expenses,
+      totalIncome: totalIncome,
+      totalExpenses: totalExpensesDisplay,
+      netBalance: netBalance,
     };
   }, [transactions, clientLoaded]);
 
