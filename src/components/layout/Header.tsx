@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Briefcase, LogOut, UserCircle, Settings, LayoutDashboard } from 'lucide-react';
+import { Menu, Briefcase, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { APP_NAME } from '@/lib/constants';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -18,7 +18,6 @@ const navItems = [
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
@@ -43,7 +42,6 @@ export default function Header() {
     </>
   );
 
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
@@ -62,25 +60,16 @@ export default function Header() {
           {isAuthenticated && user ? (
             <>
               <span className="hidden text-sm text-muted-foreground md:inline">
-                Hi, {user.name || user.email.split('@')[0]}
+                Hi, {user.name || 'Guest'}
               </span>
               <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
                 <LogOut className="h-5 w-5" />
               </Button>
             </>
-          ) : (
-            pathname !== '/login' && pathname !== '/signup' && (
-              <>
-                <Button variant="outline" asChild>
-                  <Link href="/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/signup">Sign Up</Link>
-                </Button>
-              </>
-            )
-          )}
-          {isAuthenticated && (
+          ) : null} 
+          {/* Removed login/signup buttons as auth is anonymous */}
+
+          {isAuthenticated && user && (
             <div className="md:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -93,8 +82,8 @@ export default function Header() {
                   <div className="mb-4 flex items-center gap-2 border-b pb-4">
                     <UserCircle className="h-8 w-8 text-primary" />
                     <div>
-                      <p className="font-semibold">{user?.name || user?.email.split('@')[0]}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="font-semibold">{user.name || 'Guest User'}</p>
+                      {user.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
                     </div>
                   </div>
                   <nav className="flex flex-col gap-2">

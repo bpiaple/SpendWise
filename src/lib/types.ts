@@ -1,7 +1,8 @@
+
 export interface User {
   id: string;
-  email: string;
-  name?: string;
+  email?: string; // Made optional
+  name?: string;  // Made optional
 }
 
 export type TransactionType = 'income' | 'expense';
@@ -15,7 +16,7 @@ export interface Transaction {
   type: TransactionType;
   categoryId: string;
   isCategorizedByAI?: boolean;
-  needsReview?: boolean; 
+  needsReview?: boolean;
 }
 
 export interface Category {

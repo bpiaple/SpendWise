@@ -1,24 +1,21 @@
 
 "use client";
-import type { User as AppUser } from '@/lib/types'; // Renamed to avoid conflict with Firebase User
+import type { User as AppUser } from '@/lib/types';
 import React, { createContext, useContext, useEffect, ReactNode, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase/config';
-import { 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
+import {
+  onAuthStateChanged,
+  signInAnonymously as firebaseSignInAnonymously, // Renamed for clarity
   signOut as firebaseSignOut,
-  updateProfile,
-  type User as FirebaseUser // Firebase's User type
+  type User as FirebaseUser
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: AppUser | null;
-  login: (email: string, password: string) => Promise<void>;
+  signInAnonymously: () => Promise<void>; // New method
   logout: () => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -27,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -36,8 +33,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         setUser({
           id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+          // Anonymous users won't have email or displayName by default
+          email: firebaseUser.email ?? undefined,
+          name: firebaseUser.displayName ?? undefined,
         });
       } else {
         setUser(null);
@@ -48,31 +46,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-
-  const login = async (email: string, password: string) => {
+  const signInAnonymously = async () => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await firebaseSignInAnonymously(auth);
       // User state will be set by onAuthStateChanged
-      router.push('/dashboard');
-    } catch (error: any) {
-      console.error("Login error:", error);
+      // router.push('/dashboard'); // Navigation will be handled by the page calling this or HomePage
       toast({
-        title: "Login Failed",
-        description: error.message || "Could not sign in. Please check your credentials.",
+        title: "Signed In Anonymously",
+        description: "You are browsing as a guest.",
+      });
+    } catch (error: any) {
+      console.error("Anonymous sign-in error:", error);
+      toast({
+        title: "Sign-in Failed",
+        description: error.message || "Could not sign in anonymously.",
         variant: "destructive",
       });
-      setIsLoading(false); // Ensure loading is stopped on error
-      throw error; // Re-throw to allow form to handle its state
+      setIsLoading(false);
+      throw error;
     }
+    // setIsLoading(false) will be handled by onAuthStateChanged effect
   };
 
   const logout = async () => {
     setIsLoading(true);
     try {
       await firebaseSignOut(auth);
-      // User state will be set to null by onAuthStateChanged
-      router.push('/login');
+      router.push('/'); // Redirect to home page after logout for new anonymous session
     } catch (error: any) {
       console.error("Logout error:", error);
        toast({
@@ -81,36 +82,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     } finally {
-        // setUser(null) is handled by onAuthStateChanged
         setIsLoading(false);
     }
   };
 
-  const signup = async (name: string, email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-      // User state will be set by onAuthStateChanged, reflecting the new profile
-      // It might take a moment for onAuthStateChanged to pick up displayName, force refresh if needed or update local state.
-      // For simplicity here, onAuthStateChanged will handle it.
-      router.push('/dashboard');
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      toast({
-        title: "Signup Failed",
-        description: error.message || "Could not create account. Please try again.",
-        variant: "destructive",
-      });
-      setIsLoading(false); // Ensure loading is stopped on error
-      throw error; // Re-throw to allow form to handle its state
-    }
-  };
-
-  const isAuthenticated = !!user && !isLoading; // Ensure not loading when checking auth
+  const isAuthenticated = !!user && !isLoading;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, isAuthenticated, isLoading }}>
+    <AuthContext.Provider value={{ user, signInAnonymously, logout, isAuthenticated, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
