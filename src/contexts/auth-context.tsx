@@ -63,17 +63,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: error.message || "Could not sign in anonymously.",
         variant: "destructive",
       });
-      setIsLoading(false);
-      throw error;
+      // Ensure isLoading is false if signInAnonymously fails before onAuthStateChanged updates it.
+      // onAuthStateChanged should set isLoading to false regardless of success/failure of this call if auth state changes.
+      // However, if firebaseSignInAnonymously throws before onAuthStateChanged can react, isLoading might remain true.
+      // Forcing it false here ensures UI doesn't get stuck loading on a failed anonymous sign-in.
+      const  currentUser = auth.currentUser;
+      if (!currentUser) { // If still no user after attempt, ensure loading is false.
+        setIsLoading(false);
+      }
+      throw error; // Re-throw so caller (e.g. HomePage) can know.
     }
-    // setIsLoading(false) will be handled by onAuthStateChanged effect
+    // setIsLoading(false) will be primarily handled by onAuthStateChanged effect.
   };
 
   const logout = async () => {
-    setIsLoading(true);
+    // Let onAuthStateChanged handle user state and isLoading changes.
+    // Layouts/pages will redirect based on the new auth state.
     try {
       await firebaseSignOut(auth);
-      router.push('/'); // Redirect to home page after logout for new anonymous session
+      // After firebaseSignOut, onAuthStateChanged will fire, setting user to null.
+      // The DashboardLayout (or other protected routes) will detect !isAuthenticated 
+      // and redirect to /login, which then redirects to / (HomePage).
+      // HomePage will then initiate a new anonymous session.
     } catch (error: any) {
       console.error("Logout error:", error);
        toast({
@@ -81,8 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: error.message || "An unexpected error occurred during logout.",
         variant: "destructive",
       });
-    } finally {
-        setIsLoading(false);
+      // In case of a logout error, the auth state might not have changed.
+      // We don't explicitly set isLoading here; onAuthStateChanged is the source of truth for auth state.
     }
   };
 
