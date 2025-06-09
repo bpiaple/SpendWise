@@ -3,13 +3,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppData } from '@/contexts/app-data-context';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import type { Transaction, Category } from '@/lib/types';
 import * as LucideIcons from 'lucide-react';
 import AddTransactionDialog from './AddTransactionDialog'; // For editing
-import { useToast } from '../ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const { HelpCircle, Edit3, Trash2 } = LucideIcons;
 

@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { PlusCircle, Edit3, Trash2, Target } from 'lucide-react';
 import type { Budget } from '@/lib/types';
-import { useToast } from '../ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 const budgetFormSchema = z.object({
